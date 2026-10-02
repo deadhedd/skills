@@ -1,0 +1,7 @@
+# OpenAI Codex adapter. This file supplies the interface metadata Codex shows in
+# its agent picker. The skill's actual instructions live in ../SKILL.md, which the
+# Agent Skills client installs alongside this file and loads when the skill runs.
+interface:
+  display_name: "Dev Cycle"
+  short_description: "Run one feature through the engineering workflow"
+  default_prompt: "Run the dev-cycle skill: read its SKILL.md, resume this feature from durable repo state, and coordinate the installed engineering skills through fresh subagents until the required workflow is complete or I am genuinely needed."

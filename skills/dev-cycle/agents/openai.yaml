@@ -4,4 +4,4 @@
 interface:
   display_name: "Dev Cycle"
   short_description: "Run one feature through the engineering workflow"
-  default_prompt: "Run the dev-cycle skill: read its SKILL.md, resume this feature from durable repo state, and coordinate the installed engineering skills through fresh subagents across the effective workflow tier unless I steer otherwise. Verify each stage from durable evidence before advancing. Astra is forbidden for this run and every descendant agent; keep the current Codex model, or use gpt-6-luna when explicit model selection is required."
+  default_prompt: "Run the dev-cycle skill: read its SKILL.md, resume this feature from durable repo state, and coordinate the installed engineering skills through fresh subagents across the effective workflow tier unless I steer otherwise. Verify each stage from durable evidence before advancing. Astra is forbidden for this run and every descendant agent; preserve other model choices, including different model reviews, as long as they use a non Astra model."

@@ -40,9 +40,9 @@ Explicit steering always wins. If the engineer says to skip a stage, stop at a s
 
 Astra is forbidden for this skill and every agent it starts, directly or indirectly.
 
-Never request `gpt-6-astra`, an Astra alias, or a model choice described as Astra. This rule overrides any child skill instruction to use a stronger model, another model, a preferred model, or a stage specific model.
+Never request `gpt-6-astra`, an Astra alias, or a model choice described as Astra. This is the only model restriction imposed by this skill.
 
-On Codex, keep the current session model for delegated work when the client controls subagent models. If explicit model selection is required, use `gpt-6-luna`. A child that cannot continue without Astra must stop and report `BLOCKED`; it must never select Astra as a fallback.
+Preserve child skill model intent otherwise. A review or critique that asks for a different model should use a suitable non Astra model so model diversity is retained. A child that would otherwise choose Astra must choose another suitable model instead. If no non Astra option can satisfy the child skill, stop and report `BLOCKED`.
 
 Pass this rule to every child and require each child to pass it to every descendant.
 
@@ -74,7 +74,7 @@ Run the installed <skill> skill for <target>.
 Read and follow that skill's SKILL.md exactly. It is authoritative for this stage.
 Use durable repo artifacts and the current working tree as the source of truth.
 
-MODEL GUARD: Astra is forbidden for this run and every descendant agent. Never request `gpt-6-astra`, an Astra alias, or Astra as a stronger or alternate model. On Codex, keep the current session model when the client controls subagent models. If explicit model selection is required, use `gpt-6-luna`. Pass this rule unchanged to every descendant.
+MODEL GUARD: Astra is forbidden for this run and every descendant agent. Never request `gpt-6-astra`, an Astra alias, or Astra as a stronger or alternate model. Preserve all other child model choices, including different model review or critique, using any suitable non Astra model. Pass this rule unchanged to every descendant.
 
 The engineer invoked /dev-cycle. Routine continuation through the effective workflow tier, routine reruns after repair, and the routine mark done choice at the tier closing stage are already approved. Do not use that approval for product decisions, architecture choices, scope changes, optional discovery or critique, privileged actions, or irreversible external actions.
 

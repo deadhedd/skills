@@ -1,7 +1,7 @@
 ---
 name: dev-cycle
-allowed-tools: Bash, Read, Grep, Glob, Write, Edit, Agent, AskUserQuestion
-description: "Run /dev-cycle to carry one existing-codebase feature or slice through the installed engineering workflow using subagents. Coordinates /scope, /architect, /develop, /check, /test, /document, /sync, and /debug without replacing any of them. Resumes from durable repo state and asks the engineer only when an underlying skill requires a real decision."
+allowed-tools: Bash, Read, Grep, Glob, Agent, AskUserQuestion
+description: "Run this skill when you want one existing codebase feature or slice carried through its effective engineering workflow. Resume from durable repo state, delegate each phase to the installed skill in a fresh subagent, and stop only for real engineer decisions, blockers, or explicit steering."
 ---
 
 ## Output style (plain words, no dashes, no hyphens)
@@ -12,179 +12,184 @@ Write everything this skill produces, files and messages alike, in plain simple 
 
 ## What this skill does
 
-Coordinates the existing engineering workflow for one feature or development slice in an existing codebase.
+Coordinates one feature or development slice in an existing codebase.
 
-This skill owns no development method of its own. It does not redesign, summarize, or replace `/scope`, `/audit`, `/architect`, `/develop`, `/check`, `/test`, `/document`, `/sync`, or `/debug`. Each stage is delegated to a fresh subagent that must load and follow the installed skill for that stage.
+It owns no engineering phase and writes no project artifact. Each phase runs in a fresh subagent that loads and follows the installed skill for that phase. The coordinator only resolves state, chooses the next phase, verifies the handoff, carries real engineer decisions, and routes repair work.
 
-The coordinator owns only:
+The repository is the source of truth. A child report is evidence to inspect, not state to trust by itself.
 
-1. finding the target and current durable state
-2. choosing the next incomplete workflow stage
-3. delegating that stage to a fresh subagent
-4. carrying real user decisions back to the stage that asked for them
-5. following explicit handoffs from one installed skill to another
-6. stopping when the required workflow is complete or the engineer is genuinely needed
+This version is for existing codebases. Do not use it to bootstrap a new product or choose an initial stack.
 
-The repository is the source of truth. Chat summaries are not.
+## Invocation consent
 
-This first version is for existing codebases. Do not use it to bootstrap a brand new product or choose an initial stack.
+Running `/dev-cycle <target>` is the engineer choosing to carry that target through the effective workflow tier unless they steer otherwise.
 
-## Hard boundaries
+That choice preapproves routine workflow control only:
 
-Never perform a stage's work in the coordinator when the corresponding installed skill exists.
+1. run the next stage in the tier
+2. rerun a stage invalidated by a repair
+3. accept the routine `mark done?` choice when the tier closing stage has passed
 
-Never substitute a home grown architecture, scoping, implementation, review, testing, documentation, synchronization, or debugging process.
+Do not ask the engineer again for those routine choices.
 
-Never answer a question that an underlying skill says belongs to the engineer.
+This consent does not cover product requirements, architecture choices, scope changes, optional discovery or critique that a child skill explicitly leaves to the engineer, contradictory durable state, privileged actions, or external irreversible actions.
+
+Explicit steering always wins. If the engineer says to skip a stage, stop at a stage, or change the target, follow that instruction.
+
+## Boundaries
+
+Never perform phase work in the coordinator when an installed skill owns it.
+
+Never edit code, scope, specs, tests, reviews, documentation, or `AGENTS.md` from the coordinator.
 
 Never commit, push, merge, publish, release, deploy, or perform another irreversible external action unless the engineer explicitly asked for that action outside this skill.
 
-Never rerun a stage that durable repo state already shows as complete unless a later stage invalidated it.
+Never rerun work durable state already records as complete unless later work invalidated it.
 
-Do not hand the full parent conversation to a stage when the stage can recover context from the repo. Give it the target, the named skill, and any specific steering or user answer it needs.
+Do not copy the parent conversation into a child. Pass only the target, the skill, explicit steering, and any engineer answer the child needs.
 
 ## Subagents
 
-Subagent support is required. If the client cannot delegate to subagents, stop and say that `/dev-cycle` needs subagent support.
+Subagent support is required. If the client cannot delegate, stop and say this skill needs subagent support.
 
-Use one fresh subagent for each top level stage. The stage subagent may use its own subagents exactly as its installed skill instructs. Do not flatten or suppress nested delegation.
+Use one fresh subagent per top level stage. A stage may use its own subagents exactly as its installed skill instructs.
 
-Do not override a stage skill's model choices. A spawned stage agent may inherit the current model unless the installed skill itself requires a different model for one of its internal checks.
+Do not override a stage skill's model choices. All stage agents work in the same repository and current working directory as the coordinator.
 
-All stage agents work in the same repository and current working directory as the coordinator.
-
-### Stage prompt contract
-
-For every stage, send a compact prompt with this shape:
+Use this compact prompt:
 
 ```text
 Run the installed <skill> skill for <target>.
 
 Read and follow that skill's SKILL.md exactly. It is authoritative for this stage.
-Do not replace or reinterpret its workflow.
-Use the repository's durable artifacts and current working tree as the source of truth.
+Use durable repo artifacts and the current working tree as the source of truth.
+
+The engineer invoked /dev-cycle. Routine continuation through the effective workflow tier, routine reruns after repair, and the routine mark done choice at the tier closing stage are already approved. Do not use that approval for product decisions, architecture choices, scope changes, optional discovery or critique, privileged actions, or irreversible external actions.
 
 Steering from the coordinator:
-<only information this stage actually needs, or "none">
+<only information this stage needs, or "none">
 
-If the skill requires a decision that belongs to the engineer, ask the engineer directly when your client supports that. Otherwise return NEEDS_USER with the exact question and options. Do not choose for them.
+If you need a real engineer decision, ask the engineer directly when the client supports it. Otherwise return NEEDS_USER with the exact question, recommendation, and options. Do not choose for them.
 
-When the stage is finished, report:
+When finished, report:
 STATUS: COMPLETE | BLOCKED | NEEDS_USER
 ARTIFACTS: files or durable state changed
-NEXT: the next skill or action this skill recommends, if any
+NEXT: the next skill or action you recommend, if any
 SUMMARY: a compact result
 ```
 
-On Codex, prefer a fresh subagent without inherited chat turns when the spawn interface supports it. The explicit stage prompt plus repository state should carry the work. On another Agent Skills client, use the closest available fresh subagent behavior.
+Prefer a fresh child without inherited chat turns when the client supports it.
 
-## Start or resume
+## Resolve current state
 
-Given `/dev-cycle <target>`:
+For `/dev-cycle <target>`:
 
 1. Read root `AGENTS.md` if present.
-2. Locate the relevant scope file under `docs/scope/` or `.workflow/scope/`.
-3. Locate any linked spec for the target.
-4. Read only enough of those artifacts plus `git status` to determine the current workflow stage.
-5. If the target is ambiguous, ask one short clarifying question and stop until answered.
-6. If there is no usable root `AGENTS.md` for an existing codebase, delegate `/audit` before continuing.
-7. If the target is not enrolled in scope, delegate `/scope <target>`.
-8. If the target is already enrolled, do not rerun `/scope` merely to begin the cycle.
-9. Resume from the first incomplete required stage.
+2. Locate only the scope entry that contains the target under `docs/scope/` or `.workflow/scope/`.
+3. Follow that entry to its governing spec when one exists.
+4. Read `git status`.
+5. Resolve the effective workflow tier from the feature override, else the project default.
+6. Carry any explicit engineer steering for this run.
 
-Treat durable artifact status as stronger evidence than a previous agent's prose summary.
+If the target is genuinely ambiguous, ask one short question.
 
-## Workflow
+If an existing codebase has no usable root `AGENTS.md`, dispatch `/audit`.
 
-Follow the installed skills and the target's recorded workflow tier.
+If the target is not enrolled, dispatch `/scope <target>`.
 
-### Design gate
+Do not rerun `/scope` merely to start a cycle for an enrolled target.
 
-If the scope says the target needs a spec and no governing build spec exists, delegate `/architect <target>`.
+## Dispatch loop
 
-If `/develop` says a load bearing decision is still owed, delegate `/architect` with the exact decision it surfaced, then return to a fresh `/develop` subagent.
+After every successful stage, resolve current state again from the repo and choose the first stage still needed.
 
-If the scope says no spec is needed, do not invent an architecture stage.
-
-### Build
-
-Delegate `/develop <target>`.
-
-The develop skill owns its own gates, implementation method, build plan, self checks, scope advancement, and any assumed decision behavior.
-
-### Verification tail
-
-Read the effective workflow tier from the scope. A per feature override wins over the project default.
-
-Run only the tail required by that tier:
-
-| Tier | Required tail after `/develop` |
+| Durable state | Dispatch |
 |---|---|
-| `Prototype` | none |
-| `Alpha` | `/check verify <target>` |
-| `Beta` | `/check verify <target>` then `/test <target>` |
-| `GA` | `/check verify <target>` then `/test <target>` then `/check review <target>` then `/document <target>` |
+| project context missing | `/audit` |
+| target not enrolled | `/scope <target>` |
+| load bearing decision owed | `/architect <target>` |
+| build incomplete | `/develop <target>` |
+| `Alpha`, `Beta`, or `GA`, verify not complete | `/check verify <target>` |
+| `Beta` or `GA`, tests not complete | `/test <target>` |
+| `GA`, review not complete | `/check review <target>` |
+| `GA`, documentation not complete | `/document <target>` |
+| selected cycle stages satisfied | `/sync` |
+| sync complete, no blocking item | complete |
 
-Do not add extra stages merely because they seem prudent. The installed scope skill owns the tier policy.
+`Prototype` stops its normal phase sequence after `/develop`. `Alpha` adds verify. `Beta` adds tests. `GA` adds review and documentation.
 
-### Sync
+The tier selects the normal automated sequence for this invocation. It does not make the workflow compulsory outside this invocation, and the engineer may skip or add stages at any time.
 
-After the required tail is complete, delegate `/sync`.
+Treat a child's `NEXT` as a routing hint. Recheck durable state before following it.
 
-If `/sync` reports decision debt, stale architecture, or a context gap, follow the skill it explicitly names. Do not silently rewrite the affected artifact in the coordinator.
+## Evidence gate
 
-## Failures and repair loops
+A child saying `STATUS: COMPLETE` is not enough. Before advancing, verify the smallest durable evidence that the stage owns.
 
-Follow the handoff named by the skill that found the problem.
+Use stage owned evidence when it exists:
 
-Examples:
+1. `audit`: usable `AGENTS.md`
+2. `scope`: the target is enrolled
+3. `architect`: the governing decision is recorded, or durable state now says no spec is needed
+4. `develop`: the claimed code change exists and the target's build progress changed as the skill owns
+5. `check verify`: the claimed verification result is reflected in its owned scope or `verify.md` state
+6. `test`: the claimed tests exist, and `Test it` changed when the skill says it passed
+7. `check review`: the claimed review artifact exists
+8. `document`: the claimed document exists, and `Document it` changed when applicable
+9. `sync`: the reconciliations it claims are visible in the owned durable files
 
-* If `/develop` routes to `/architect`, run `/architect`, then retry `/develop`.
-* If `/check verify` routes a behavioral failure to `/debug`, run `/debug`, then rerun the verification stages affected by the fix.
-* If `/check verify` says implementation is incomplete rather than broken, return to `/develop`, then rerun the required verification tail.
-* If `/test` surfaces a product defect, follow its named repair path, then rerun the affected verification stages.
-* If `/check review` records findings that require code changes before the cycle can finish, return those findings to a fresh `/develop` subagent, then rerun the required checks that the change may have invalidated.
+Do not demand evidence a stage does not own.
 
-Do not invent a repair route when the reporting skill gives one.
+If the report says complete but its claimed durable evidence is missing, do not advance. Rerun that stage once with the exact mismatch. If the same mismatch remains, stop and report the blocker.
 
-If the same gate fails twice for materially the same reason with no meaningful new repo evidence, stop and ask the engineer rather than burning another loop.
+## Repair routing
+
+Follow the classification from the skill that found the problem, then return to the dispatch loop.
+
+Typical routes:
+
+1. undecided load bearing choice goes to `/architect`
+2. missing or incomplete implementation goes to `/develop`
+3. broken implemented behavior goes to `/debug`
+4. review findings that need code changes go to `/develop`
+
+After code changes during this invocation, treat downstream verification already run in this invocation as invalidated and rerun the affected stages selected by the tier.
+
+Do not restart earlier phases that the repair did not invalidate.
+
+If the same gate fails twice for materially the same reason with no meaningful new repo evidence, stop for the engineer.
 
 ## Human decisions
 
-The goal is to remove message carrying, not to remove the engineer from decisions.
+The goal is to remove message carrying, not engineer judgment.
 
-Pause for the engineer when an installed skill requires:
+Pause only for a real engineer choice or blocker, such as:
 
-* product requirements or preferences that cannot be inferred
-* a load bearing architecture choice the skill presents for confirmation
-* permission for optional discovery, cross model review, or another action the skill explicitly leaves to the engineer
-* a scope change
-* an irreversible or unusually privileged action
-* resolution of contradictory durable artifacts
-* a repeated blocker after the repair limit above
+1. product requirements or preferences that cannot be inferred
+2. an architecture choice the owning skill requires the engineer to decide
+3. optional discovery, research, or critique that the owning skill requires separate consent for
+4. a scope change
+5. an irreversible or unusually privileged action
+6. contradictory durable artifacts
+7. a repeated blocker after the repair limit
 
-If a child cannot ask the engineer directly, relay its question without answering it. Once the engineer answers, resume that same child when the client supports follow up. Otherwise start a replacement subagent with the answer plus the same stage target.
+If a child cannot ask directly, relay its exact question, recommendation, and options. Once answered, resume that child when possible, otherwise start a fresh replacement child with the answer.
 
-Do not pause merely because a stage finished successfully.
+Do not pause just because a stage completed.
 
 ## Completion
 
-The cycle is complete when:
+The cycle is complete when the tier selected stages have either completed or been explicitly skipped, final `/sync` completes, and no blocking engineer decision remains.
 
-1. the target's required build stage and verification tail are complete for its effective workflow tier
-2. the final `/sync` run completes or reports only items that the installed workflow explicitly treats as nonblocking debt
-3. no required stage is still asking for engineer input
-
-Return one compact report:
+Return only the useful summary. Durable files hold the detail.
 
 ```text
 ## /dev-cycle complete
 
-**<target> completed through <tier>.**
+<target> completed through <tier>.
 
 Completed: <stages actually run>
+Skipped: <stages explicitly skipped, or none>
 Resumed from: <first stage this invocation needed>
-Needs you: <nothing, or the one remaining nonblocking item>
+Needs you: <nothing, or one remaining nonblocking item>
 ```
-
-Do not repeat every subagent report. The durable files hold the detail.

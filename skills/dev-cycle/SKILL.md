@@ -36,6 +36,16 @@ This consent does not cover product requirements, architecture choices, scope ch
 
 Explicit steering always wins. If the engineer says to skip a stage, stop at a stage, or change the target, follow that instruction.
 
+## Model guard
+
+Astra is forbidden for this skill and every agent it starts, directly or indirectly.
+
+Never request `gpt-6-astra`, an Astra alias, or a model choice described as Astra. This rule overrides any child skill instruction to use a stronger model, another model, a preferred model, or a stage specific model.
+
+On Codex, keep the current session model for delegated work when the client controls subagent models. If explicit model selection is required, use `gpt-6-luna`. A child that cannot continue without Astra must stop and report `BLOCKED`; it must never select Astra as a fallback.
+
+Pass this rule to every child and require each child to pass it to every descendant.
+
 ## Boundaries
 
 Never perform phase work in the coordinator when an installed skill owns it.
@@ -52,9 +62,9 @@ Do not copy the parent conversation into a child. Pass only the target, the skil
 
 Subagent support is required. If the client cannot delegate, stop and say this skill needs subagent support.
 
-Use one fresh subagent per top level stage. A stage may use its own subagents exactly as its installed skill instructs.
+Use one fresh subagent per top level stage. A stage may use its own subagents exactly as its installed skill instructs, except for model choices that conflict with the Model guard.
 
-Do not override a stage skill's model choices. All stage agents work in the same repository and current working directory as the coordinator.
+All stage agents work in the same repository and current working directory as the coordinator.
 
 Use this compact prompt:
 
@@ -63,6 +73,8 @@ Run the installed <skill> skill for <target>.
 
 Read and follow that skill's SKILL.md exactly. It is authoritative for this stage.
 Use durable repo artifacts and the current working tree as the source of truth.
+
+MODEL GUARD: Astra is forbidden for this run and every descendant agent. Never request `gpt-6-astra`, an Astra alias, or Astra as a stronger or alternate model. On Codex, keep the current session model when the client controls subagent models. If explicit model selection is required, use `gpt-6-luna`. Pass this rule unchanged to every descendant.
 
 The engineer invoked /dev-cycle. Routine continuation through the effective workflow tier, routine reruns after repair, and the routine mark done choice at the tier closing stage are already approved. Do not use that approval for product decisions, architecture choices, scope changes, optional discovery or critique, privileged actions, or irreversible external actions.
 

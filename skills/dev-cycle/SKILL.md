@@ -81,7 +81,7 @@ The engineer invoked /dev-cycle. Routine continuation through the effective work
 Steering from the coordinator:
 <only information this stage needs, or "none">
 
-If you need a real engineer decision, ask the engineer directly when the client supports it. Otherwise return NEEDS_USER with the exact question, recommendation, and options. Do not choose for them.
+Before asking the engineer, check whether the governing spec, matching feature scope, relevant `AGENTS.md`, or explicit steering already answers the question unambiguously. If so, use that recorded answer and continue. If a real engineer decision remains, ask directly when the client supports it. Otherwise return NEEDS_USER with the exact question, recommendation, and options. Do not choose for them.
 
 When finished, report:
 STATUS: COMPLETE | BLOCKED | NEEDS_USER
@@ -154,6 +154,29 @@ Do not demand evidence a stage does not own.
 
 If the report says complete but its claimed durable evidence is missing, do not advance. Rerun that stage once with the exact mismatch. If the same mismatch remains, stop and report the blocker.
 
+## Resolve before escalating
+
+A child `NEEDS_USER` report is provisional. Before asking the engineer, try to resolve the question from authoritative durable state.
+
+Check only the sources that can govern this target, in this order:
+
+1. the governing spec
+2. the matching feature scope
+3. the relevant `AGENTS.md`
+4. explicit steering already given for this invocation
+
+Use a recorded answer only when it resolves the child's exact question unambiguously and does not conflict with another governing artifact.
+
+If the answer is recorded, resume the same child when possible, otherwise start a fresh replacement child with that answer. Tell the child the answer came from durable state.
+
+Do not treat prior chat summaries, guesses, conventions, or a recommendation alone as an engineer decision.
+
+Escalate when the governing artifacts are silent, contradictory, or the owning skill explicitly requires fresh consent from the engineer.
+
+A deterministic mismatch is not a human decision. If the correct state is objectively established by current repo evidence, such as a stale count, status, pointer, or generated record, route the mismatch to the installed skill that owns that artifact or reconciliation. Do not edit it in the coordinator. After the owner runs, apply the evidence gate again.
+
+If ownership is unclear, inspect the installed skills' ownership rules and route to the owner. Do not ask the engineer merely to choose an owner.
+
 ## Repair routing
 
 Follow the classification from the skill that found the problem, then return to the dispatch loop.
@@ -164,6 +187,7 @@ Typical routes:
 2. missing or incomplete implementation goes to `/develop`
 3. broken implemented behavior goes to `/debug`
 4. review findings that need code changes go to `/develop`
+5. deterministic durable drift goes to the skill that owns the artifact or reconciliation
 
 After code changes during this invocation, treat downstream verification already run in this invocation as invalidated and rerun the affected stages selected by the tier.
 
@@ -175,9 +199,9 @@ If the same gate fails twice for materially the same reason with no meaningful n
 
 The goal is to remove message carrying, not engineer judgment.
 
-Pause only for a real engineer choice or blocker, such as:
+Pause only after the Resolve before escalating gate leaves a real engineer choice or blocker, such as:
 
-1. product requirements or preferences that cannot be inferred
+1. product requirements or preferences not recorded in governing artifacts
 2. an architecture choice the owning skill requires the engineer to decide
 3. optional discovery, research, or critique that the owning skill requires separate consent for
 4. a scope change
@@ -191,7 +215,11 @@ Do not pause just because a stage completed.
 
 ## Completion
 
-The cycle is complete when the tier selected stages have either completed or been explicitly skipped, final `/sync` completes, and no blocking engineer decision remains.
+The cycle is complete when the tier selected stages have either completed or been explicitly skipped, final `/sync` completes, no blocking engineer decision remains, and no known deterministic artifact mismatch remains that an installed skill can reconcile.
+
+Decision debt may remain when it genuinely requires later engineer judgment and does not invalidate the completed feature. Report it briefly.
+
+Do not declare `/dev-cycle complete` while also handing the engineer a mechanical cleanup that the workflow can resolve itself. Route that cleanup, verify the durable result, then complete.
 
 Return only the useful summary. Durable files hold the detail.
 
@@ -203,5 +231,5 @@ Return only the useful summary. Durable files hold the detail.
 Completed: <stages actually run>
 Skipped: <stages explicitly skipped, or none>
 Resumed from: <first stage this invocation needed>
-Needs you: <nothing, or one remaining nonblocking item>
+Needs you: <nothing, or one remaining nonblocking decision debt item>
 ```
